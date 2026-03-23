@@ -96,7 +96,7 @@ object AmyLexer extends Pipeline[List[File], Iterator[Token]]:
   val keywordRule = Rule(regex = keywordRegex(), tag = "keyword", isSeparator = false, transformation = KeywordValueInjection.injection)
 
   // Primitive type names,
-  def primitiveTypeRegex(): Regex[Char] = "Int(32)".r | "String".r | "Boolean".r | "Unit".r
+  def primitiveTypeRegex(): Regex[Char] = "Int".r | "String".r | "Boolean".r | "Unit".r
   val primitiveTypeRule = Rule(regex = primitiveTypeRegex(), tag = "primitiveType", isSeparator = false, transformation = PrimitiveTypeValueInjection.injection)
   
   // Boolean literals,
@@ -104,12 +104,12 @@ object AmyLexer extends Pipeline[List[File], Iterator[Token]]:
 
   // Operators,
   def operatorRegex(): Regex[Char] =
-    "++".r | "<=".r | ">=".r | "=>".r | "||".r | "&&".r | "==".r | ":=".r |
-    '+'.r | '-'.r | '*'.r | '/'.r | '%'.r | '<'.r | '>'.r | '='.r | '!'.r | '&'.r | '|'.r
+    "++".r | "<=".r | ">=".r | "||".r | "&&".r | "==".r |
+    '+'.r | '-'.r | '*'.r | '/'.r | '%'.r | '<'.r | '>'.r | '!'.r | '&'.r | '|'.r
   val operatorRule = Rule(regex =  operatorRegex(), tag = "operator", isSeparator = false, transformation = OperatorValueInjection.injection)
 
   // Identifiers,
-  val identifierRule = Rule(regex =  azAZ ~ (azAZ | '_'.r | digits).*, tag = "identifier", isSeparator = false, transformation = IdentifierValueInjection.injection)
+  val identifierRule = Rule(regex = azAZ ~ (azAZ | '_'.r | digits).*, tag = "identifier", isSeparator = false, transformation = IdentifierValueInjection.injection)
 
   // Integer literal,
   val integerLiteralRule = Rule(regex = digits.+, tag = "integerLiteral", isSeparator = false, transformation = IntegerValueInjection.injection)
@@ -119,7 +119,7 @@ object AmyLexer extends Pipeline[List[File], Iterator[Token]]:
   val stringLiteralRule = Rule(regex = stringRegex(), tag = "stringLiteral", isSeparator = false, transformation = StringLiteralValueInjection.injection)
 
   // Delimiters,
-  def delimiterRegex(): Regex[Char] =  anyOf(".:;,(){}[]=")
+  def delimiterRegex(): Regex[Char] =  anyOf(".:;,(){}[]=") | ":=".r | "=>".r
   val delimiterRule = Rule(regex = delimiterRegex(), tag = "delimiter", isSeparator = false, transformation = DelimiterValueInjection.injection)
 
   // Whitespaces,
@@ -132,7 +132,7 @@ object AmyLexer extends Pipeline[List[File], Iterator[Token]]:
   // Multi-line comments,
   // NOTE: Amy does not support nested multi-line comments (e.g. `/* foo /* bar */ */`).
   //       Make sure that unclosed multi-line comments result in an ErrorToken.
-  def multiCommentRegex(): Regex[Char] = "/*".r ~ all.* ~ "*/".r
+  def multiCommentRegex(): Regex[Char] = "/*".r ~ (anyOf(allString.replace("*", "")) | ('*'.r ~ anyOf(allString.replace("/", "")))).* ~ opt("*".r ~ "/".r)
   val multiCommentRule =  Rule(regex = multiCommentRegex(), tag = "multiComment", isSeparator = false, transformation = CommentValueInjection.injection)
 
   val rules = stainless.collection.List(
@@ -214,7 +214,13 @@ object AmyLexer extends Pipeline[List[File], Iterator[Token]]:
         token.value match
           case DelimiterValue(value) => Some(Tokens.DelimiterToken(value.mkString("")).setPos(pos))
       // Ignore whitespace and comments
-      case _ if (token.rule == whitespaceRule) | (token.rule == singleCommentRule) | (token.rule == multiCommentRule) => None
+      case _ if token.rule == whitespaceRule | token.rule == singleCommentRule => None
+      case _ if token.rule == multiCommentRule =>
+        token.value match
+          case CommentValue(value) =>
+            val commentText = value.mkString("")
+            if commentText.endsWith("*/") then None
+            else Some(Tokens.ErrorToken(s"Unclosed multi-line comment: $commentText").setPos(pos))
       case _ =>
         None
     end match
