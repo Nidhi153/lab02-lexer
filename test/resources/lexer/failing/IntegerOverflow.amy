@@ -1,0 +1,3 @@
+object IntegerOverflow
+  val a = 9999999999999999999999
+end IntegerOverflow

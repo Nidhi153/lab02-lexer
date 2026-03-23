@@ -1,0 +1,9 @@
+KeywordToken(object)(1:1)
+IdentifierToken(UnclosedString)(1:8)
+KeywordToken(val)(2:3)
+IdentifierToken(a)(2:7)
+DelimiterToken(=)(2:9)
+ErrorToken("hello
+end UnclosedString
+)(2:11)
+EOFToken()(4:1)

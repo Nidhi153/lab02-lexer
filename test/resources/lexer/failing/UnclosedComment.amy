@@ -1,0 +1,4 @@
+object UnclosedComment
+  /* This comment is never closed
+  val a = 1
+end UnclosedComment

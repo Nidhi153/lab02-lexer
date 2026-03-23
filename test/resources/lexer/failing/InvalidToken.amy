@@ -1,0 +1,3 @@
+object InvalidToken
+  val a = 1 @ 2
+end InvalidToken

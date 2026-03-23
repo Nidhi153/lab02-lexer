@@ -1,0 +1,7 @@
+KeywordToken(object)(1:1)
+IdentifierToken(UnclosedComment)(1:8)
+ErrorToken(/* This comment is never closed
+  val a = 1
+end UnclosedComment
+)(2:3)
+EOFToken()(5:1)

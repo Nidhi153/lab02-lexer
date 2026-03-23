@@ -1,0 +1,10 @@
+object Delimiters
+  val a: Int(32) = 1;
+  val b: String = "test";
+  def foo(x: Int(32), y: Int(32)): Int(32) :=
+    x + y
+  end foo
+  val c: Int(32) = foo(1, 2)
+  val d: Int(32) = { x + y }
+  val e: List = [1, 2, 3]
+end Delimiters

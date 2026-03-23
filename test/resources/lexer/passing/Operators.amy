@@ -1,0 +1,6 @@
+object Operators
+  val a: Int(32) = 1 + 2 - 3 * 4 / 5 % 6
+  val b: String = "hello"
+  val c: Boolean = (1 < 2) && (2 > 1) || (1 == 2)
+  val d: Boolean = (1 <= 5) && (10 >= 10)
+end Operators

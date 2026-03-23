@@ -1,0 +1,10 @@
+object Literals
+  val int1: Int(32) = 0
+  val int2: Int(32) = 123
+  val int3: Int(32) = 999999
+  val bool1: Boolean = true
+  val bool2: Boolean = false
+  val str1: String = "hello"
+  val str2: String = "hello world"
+  val str3: String = "test123"
+end Literals
