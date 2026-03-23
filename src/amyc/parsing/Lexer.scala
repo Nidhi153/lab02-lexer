@@ -77,7 +77,7 @@ object AmyLexer extends Pipeline[List[File], Iterator[Token]]:
    * 
    * */
 
-  
+
   // Keywords,
   def keywordRegex(): Regex[Char] = "abstract".r |
                                     "case".r |
@@ -96,58 +96,57 @@ object AmyLexer extends Pipeline[List[File], Iterator[Token]]:
   val keywordRule = Rule(regex = keywordRegex(), tag = "keyword", isSeparator = false, transformation = KeywordValueInjection.injection)
 
   // Primitive type names,
-  def primitiveTypeRegex(): Regex[Char] =
-    ???
-    // TODO
-  val primitiveTypeRule = 
-    ???
-    // TODO
+  def primitiveTypeRegex(): Regex[Char] = "Int(32)".r | "String".r | "Boolean".r | "Unit".r
+  val primitiveTypeRule = Rule(regex = primitiveTypeRegex(), tag = "primitiveType", isSeparator = false, transformation = PrimitiveTypeValueInjection.injection)
   
   // Boolean literals,
-  // TODO
-  val booleanLiteralRule = ???
-
+  val booleanLiteralRule = Rule(regex =  "true".r | "false".r, tag = "booleanLiteral", isSeparator = false, transformation = BooleanLiteralValueInjection.injection)
 
   // Operators,
-  // TODO
-  val operatorRule = ???
+  def operatorRegex(): Regex[Char] =
+    "++".r | "<=".r | ">=".r | "=>".r | "||".r | "&&".r | "==".r | ":=".r |
+    '+'.r | '-'.r | '*'.r | '/'.r | '%'.r | '<'.r | '>'.r | '='.r | '!'.r | '&'.r | '|'.r
+  val operatorRule = Rule(regex =  operatorRegex(), tag = "operator", isSeparator = false, transformation = OperatorValueInjection.injection)
 
   // Identifiers,
-  // TODO
-  val identifierRule = ???
-  
+  val identifierRule = Rule(regex =  azAZ ~ (azAZ | '_'.r | digits).*, tag = "identifier", isSeparator = false, transformation = IdentifierValueInjection.injection)
+
   // Integer literal,
-  // TODO
-  val integerLiteralRule = ???
+  val integerLiteralRule = Rule(regex = digits.+, tag = "integerLiteral", isSeparator = false, transformation = IntegerValueInjection.injection)
 
   // String literal,
-  // TODO
-  val stringLiteralRule = ???
-  
+  def stringRegex(): Regex[Char] = '"'.r ~ anyOf(allString.replace("\"","").replace("\n","")).* ~ '"'.r
+  val stringLiteralRule = Rule(regex = stringRegex(), tag = "stringLiteral", isSeparator = false, transformation = StringLiteralValueInjection.injection)
+
   // Delimiters,
-  // TODO
-  val delimiterRule = ???
+  def delimiterRegex(): Regex[Char] =  anyOf(".:;,(){}[]=")
+  val delimiterRule = Rule(regex = delimiterRegex(), tag = "delimiter", isSeparator = false, transformation = DelimiterValueInjection.injection)
 
   // Whitespaces,
-  // TODO
-  val whitespaceRule = ???
+  val whitespaceRule = Rule(regex = whiteSpaces.+, tag = "whitespace", isSeparator = false, transformation = WhitespaceValueInjection.injection)
 
   // Single-line comments,
-  // TODO
-  val singleCommentRule = ???
- 
+  def singleCommentRegex(): Regex[Char] =  "//".r ~ anyOf(allString.replace("\n", "")).* ~ opt("\n".r)
+  val singleCommentRule = Rule(regex = singleCommentRegex(), tag = "singleComment", isSeparator = false, transformation = CommentValueInjection.injection)
+
   // Multi-line comments,
   // NOTE: Amy does not support nested multi-line comments (e.g. `/* foo /* bar */ */`).
   //       Make sure that unclosed multi-line comments result in an ErrorToken.
-  val multiCommentRule = ???
-  // TODO
-
+  def multiCommentRegex(): Regex[Char] = "/*".r ~ all.* ~ "*/".r
+  val multiCommentRule =  Rule(regex = multiCommentRegex(), tag = "multiComment", isSeparator = false, transformation = CommentValueInjection.injection)
 
   val rules = stainless.collection.List(
-      keywordRule,
-      primitiveTypeRule,
-      ???
-      // TODO: Add all your rules here
+    keywordRule,
+    primitiveTypeRule,
+    booleanLiteralRule,
+    operatorRule,
+    identifierRule,
+    integerLiteralRule,
+    stringLiteralRule,
+    delimiterRule,
+    whitespaceRule,
+    singleCommentRule,
+    multiCommentRule,
   )
   /**
     * Converts a Ziplex token to an Amy token, filtering out whitespace and comments.
@@ -160,39 +159,64 @@ object AmyLexer extends Pipeline[List[File], Iterator[Token]]:
   def toAmyToken(pt: (Position, com.ziplex.lexer.Token[Char])): Option[Token] =
     val (pos, token) = pt
     token.rule match
-        case _ if token.rule == keywordRule => 
-            token.value match
-                case KeywordValue(value) => Some(Tokens.KeywordToken(value.mkString("")).setPos(pos))
-        case _ if token.rule == primitiveTypeRule =>
-            token.value match
-                case PrimitiveTypeValue(value) => Some(Tokens.PrimTypeToken(value.mkString("")).setPos(pos))
-        case _ if token.rule == booleanLiteralRule =>
-            token.value match
-                case BooleanLiteralValue.True  => Some(Tokens.BoolLitToken(true).setPos(pos))
-                case BooleanLiteralValue.False => Some(Tokens.BoolLitToken(false).setPos(pos))
-        case _ if token.rule == operatorRule =>
-            token.value match
-                case OperatorValue(name) => Some(Tokens.OperatorToken(name.mkString("")).setPos(pos))
-        case _ if token.rule == identifierRule =>
-            token.value match
-                case IdentifierValue(name) => Some(Tokens.IdentifierToken(name.mkString("")).setPos(pos))
-        case _ if token.rule == integerLiteralRule =>
-            // Make sure to ensure that the integer literal fits in a 32-bit signed integer.
-            // TODO
-            ???
-        case _ if token.rule == stringLiteralRule =>
-            token.value match
-                case StringLiteralValue(value) => 
-                    // remove surrounding quotes
-                    val str = value.tail.init.mkString("")
-                    Some(Tokens.StringLitToken(str).setPos(pos))
-        case _ if token.rule == delimiterRule =>
-            token.value match
-                case DelimiterValue(value) => Some(Tokens.DelimiterToken(value.mkString("")).setPos(pos))
-        // TODO
-        // Ignore whitespace and comments
-        case _ =>
-            None
+      case _ if token.rule == keywordRule =>
+        token.value match
+          case KeywordValue(value) => Some(Tokens.KeywordToken(value.mkString("")).setPos(pos))
+      case _ if token.rule == primitiveTypeRule =>
+        token.value match
+          case PrimitiveTypeValue(value) => Some(Tokens.PrimTypeToken(value.mkString("")).setPos(pos))
+      case _ if token.rule == booleanLiteralRule =>
+        token.value match
+          case BooleanLiteralValue.True  => Some(Tokens.BoolLitToken(true).setPos(pos))
+          case BooleanLiteralValue.False => Some(Tokens.BoolLitToken(false).setPos(pos))
+          case BooleanLiteralValue.Broken(value) => Some(ErrorToken(s"Invalid boolean literal: ${value.mkString("")}").setPos(pos))
+      case _ if token.rule == operatorRule =>
+        token.value match
+          case OperatorValue(name) => Some(Tokens.OperatorToken(name.mkString("")).setPos(pos))
+      case _ if token.rule == identifierRule =>
+        token.value match
+          case IdentifierValue(name) => Some(Tokens.IdentifierToken(name.mkString("")).setPos(pos))
+      case _ if token.rule == integerLiteralRule =>
+        // Make sure to ensure that the integer literal fits in a 32-bit signed integer.
+        token.value match
+          case IntegerValue(value) =>
+            val intStr = value.mkString("")
+            try {
+              val intValue = intStr.toInt
+              Some(Tokens.IntLitToken(intValue).setPos(pos))
+            }
+            catch {
+              case _: NumberFormatException =>
+                try {
+                  // Parse as Long to check range
+                  val longValue = intStr.toLong
+                  if (longValue > Int.MaxValue) {
+                    Some(Tokens.ErrorToken(s"Integer literal $intStr exceeds maximum value for 32-bit signed integer (${Int.MaxValue})").setPos(pos))
+                  } else if (longValue < Int.MinValue) {
+                    Some(Tokens.ErrorToken(s"Integer literal $intStr is below minimum value for 32-bit signed integer (${Int.MinValue})").setPos(pos))
+                  } else {
+                    // This generally shouldn't happen if toInt failed but toLong succeeded within Int range
+                    Some(Tokens.ErrorToken(s"Invalid integer literal: $intStr").setPos(pos))
+                  }
+                } catch {
+                  case _: NumberFormatException =>
+                    // Not a valid integer at all (e.g., "123abc" if lexer allowed it)
+                    Some(Tokens.ErrorToken(s"Invalid integer literal: $intStr").setPos(pos))
+                }
+            }
+      case _ if token.rule == stringLiteralRule =>
+        token.value match
+          case StringLiteralValue(value) =>
+            // remove surrounding quotes
+            val str = value.tail.init.mkString("")
+            Some(Tokens.StringLitToken(str).setPos(pos))
+      case _ if token.rule == delimiterRule =>
+        token.value match
+          case DelimiterValue(value) => Some(Tokens.DelimiterToken(value.mkString("")).setPos(pos))
+      // Ignore whitespace and comments
+      case _ if (token.rule == whitespaceRule) | (token.rule == singleCommentRule) | (token.rule == multiCommentRule) => None
+      case _ =>
+        None
     end match
   end toAmyToken
 
